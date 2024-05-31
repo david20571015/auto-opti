@@ -47,7 +47,7 @@ def run(
             )
 
             for param in tqdm(
-                params, total=len(list(params)), dynamic_ncols=True, leave=False
+                params, total=len(params), dynamic_ncols=True, leave=False
             ):
                 builder.upsert_tester_input(param)
                 config = builder.build()

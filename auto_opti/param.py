@@ -20,7 +20,7 @@ class Parameters(ABC):
 
     @cache
     def __len__(self):
-        return sum(map(lambda x: len(x), self.parameter_list))
+        return len(list(self.parameter_list))
 
     def __iter__(self):
         def unify(param: dict[str, TesterInputArg | Sequence[SupportsStr]]):
