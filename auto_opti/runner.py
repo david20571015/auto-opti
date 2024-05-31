@@ -3,17 +3,15 @@ import subprocess
 from collections.abc import Iterable
 from itertools import product
 
+from tqdm import tqdm
+
 from auto_opti.config import MT5ConfigBuilder
 from auto_opti.param import Parameters
 
 
 def execute_mt5_optimization(mt5_terminal_path: str, config_path: str):
-    cmd = f'"{mt5_terminal_path}" /config:"{config_path}"'
-    cmd = f"wc -l {config_path}"
-    try:
-        subprocess.run(cmd, shell=True, check=True)
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Failed to run optimization, because {e}") from e
+    cmd = [mt5_terminal_path, f"/config:{config_path}"]
+    subprocess.run(cmd, shell=True, check=True)
 
 
 def run(
@@ -33,21 +31,32 @@ def run(
         }
     )
 
-    for symbol, period in product(symbols, periods):
-        builder.upsert_tester(
-            {
-                "Symbol": symbol,
-                "Period": period,
-                "Report": f"{params.__class__.__name__}-{symbol}-{period}",
-            }
-        )
+    with tqdm(
+        product(symbols, periods),
+        total=len(list(symbols)) * len(list(periods)),
+        dynamic_ncols=True,
+    ) as pbar:
+        for symbol, period in pbar:
+            pbar.set_postfix_str(f"{symbol}-{period}")
+            builder.upsert_tester(
+                {
+                    "Symbol": symbol,
+                    "Period": period,
+                    "Report": f"{params.__class__.__name__}-{symbol}-{period}",
+                }
+            )
 
-        for param in params:
-            builder.upsert_tester_input(param)
-            config = builder.build()
+            for param in tqdm(
+                params, total=len(list(params)), dynamic_ncols=True, leave=False
+            ):
+                builder.upsert_tester_input(param)
+                config = builder.build()
 
-            with config.save_temp_config(
-                f"tmp-{symbol}-{period}.ini", delete=True
-            ) as config_path:
-                print(config_path)
-                execute_mt5_optimization(mt5_terminal, config_path)
+                with config.save_temp_config(
+                    f"tmp-{symbol}-{period}.ini", delete=True
+                ) as config_path:
+                    print(f"Running config file: {config_path}")
+                    try:
+                        execute_mt5_optimization(mt5_terminal, config_path)
+                    except subprocess.CalledProcessError as e:
+                        print(f'Failed to run optimization, because "{e}"')

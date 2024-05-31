@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
+from functools import cache
 
 from auto_opti.config import SupportsStr, TesterInputArg
 
@@ -16,6 +17,10 @@ class Parameters(ABC):
         self,
     ) -> Iterable[dict[str, TesterInputArg | Sequence[SupportsStr]]]:
         raise NotImplementedError
+
+    @cache
+    def __len__(self):
+        return sum(map(lambda x: len(x), self.parameter_list))
 
     def __iter__(self):
         def unify(param: dict[str, TesterInputArg | Sequence[SupportsStr]]):
